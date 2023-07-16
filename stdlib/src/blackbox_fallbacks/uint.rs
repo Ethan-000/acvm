@@ -122,6 +122,23 @@ macro_rules! impl_uint {
                 ($name::new(q_witness), $name::new(r_witness), new_gates, num_witness)
             }
 
+            /// Rotate left `rotation` bits. `(x << rotation) | (x >> (width - rotation))`
+            // Switched `or` with `add` here
+            // This should be the same as `u32.rotate_right(rotation)` in rust stdlib
+            pub fn rol(&self, rotation: u32, num_witness: u32) -> ($name, Vec<Opcode>, u32) {
+                let mut new_gates = Vec::new();
+
+                let (right_shift, extra_gates, num_witness) =
+                    self.rightshift(self.width - rotation, num_witness);
+                new_gates.extend(extra_gates);
+                let (left_shift, extra_gates, num_witness) = self.leftshift(rotation, num_witness);
+                new_gates.extend(extra_gates);
+                let (result, extra_gates, num_witness) = left_shift.add(&right_shift, num_witness);
+                new_gates.extend(extra_gates);
+
+                (result, new_gates, num_witness)
+            }
+
             /// Rotate right `rotation` bits. `(x >> rotation) | (x << (width - rotation))`
             // Switched `or` with `add` here
             // This should be the same as `u32.rotate_right(rotation)` in rust stdlib
