@@ -117,9 +117,9 @@ fn keccakf(state: Vec<UInt8>, num_witness: u32) -> (Vec<UInt8>, Vec<Opcode>, u32
         UInt64::from_witnesses(&state_witnesses, num_witness);
     new_gates.extend(extra_gates);
 
-    for i in 0..24 {
+    for round_constant in ROUND_CONSTANTS {
         let (new_state_u64, extra_gates, updated_witness_counter) =
-            keccak_round(state_u64, ROUND_CONSTANTS[i], num_witness);
+            keccak_round(state_u64, round_constant, num_witness);
         state_u64 = new_state_u64;
         new_gates.extend(extra_gates);
         num_witness = updated_witness_counter;
@@ -135,7 +135,7 @@ fn keccakf(state: Vec<UInt8>, num_witness: u32) -> (Vec<UInt8>, Vec<Opcode>, u32
         num_witness = updated_witness_counter;
     }
 
-    let state_u8 = state_u8.into_iter().flatten().map(|w| UInt8::new(w)).collect();
+    let state_u8 = state_u8.into_iter().flatten().map(UInt8::new).collect();
     (state_u8, new_gates, num_witness)
 }
 

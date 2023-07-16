@@ -4,7 +4,6 @@ macro_rules! impl_uint {
         $name:ident,
         $size:expr
     ) => {
-        use crate::helpers::VariableStore;
         use acir::{
             brillig::{self, RegisterIndex},
             circuit::{
@@ -16,6 +15,7 @@ macro_rules! impl_uint {
             native_types::{Expression, Witness},
             FieldElement,
         };
+        use $crate::helpers::VariableStore;
 
         /// UInt contains a witness that points to a field element that represents a u32 integer
         /// It has a inner field of type [Witness] that points to the field element and width = 32
