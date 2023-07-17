@@ -244,7 +244,6 @@ macro_rules! test_hashes {
             #![proptest_config(ProptestConfig::with_cases(3))]
             #[test]
             fn $name(input_values in proptest::collection::vec(0..u8::MAX, 1..50)) {
-                // let input_values = vec![3, 219, 57, 33, 20, 33, 1, 237, 85, 9, 71, 246];
                 let mut opcodes = Vec::new();
                 let mut witness_assignments = BTreeMap::new();
                 let mut input_witnesses: Vec<FunctionInput> = Vec::new();
