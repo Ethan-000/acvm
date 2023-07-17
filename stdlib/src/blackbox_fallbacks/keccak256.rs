@@ -106,7 +106,7 @@ fn create_keccak_constraint(
         state = new_state;
     }
 
-    let result: Vec<Witness> = state[..32].into_iter().map(|x| x.inner).collect();
+    let result: Vec<Witness> = state[..32].iter().map(|x| x.inner).collect();
     (result, num_witness, new_gates)
 }
 
@@ -203,9 +203,7 @@ fn keccak_round(
     for y_step in 0..5 {
         let y = y_step * 5;
 
-        for x in 0..5 {
-            array[x] = a[y + x];
-        }
+        array[..5].copy_from_slice(&a[y..(5 + y)]);
 
         for x in 0..5 {
             let (a_ele, extra_gates, updated_witness_counter) = array[(x + 1) % 5].not(num_witness);
