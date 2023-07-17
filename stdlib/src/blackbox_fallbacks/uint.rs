@@ -124,7 +124,7 @@ macro_rules! impl_uint {
 
             /// Rotate left `rotation` bits. `(x << rotation) | (x >> (width - rotation))`
             // Switched `or` with `add` here
-            // This should be the same as `u32.rotate_right(rotation)` in rust stdlib
+            // This should be the same as `u32.rotate_left(rotation)` in rust stdlib
             pub fn rol(&self, rotation: u32, num_witness: u32) -> ($name, Vec<Opcode>, u32) {
                 let mut new_gates = Vec::new();
 
@@ -146,7 +146,7 @@ macro_rules! impl_uint {
                 let mut new_gates = Vec::new();
 
                 let (left_shift, extra_gates, num_witness) =
-                    self.leftshift(32 - rotation, num_witness);
+                    self.leftshift(self.width - rotation, num_witness);
                 new_gates.extend(extra_gates);
                 let (right_shift, extra_gates, num_witness) =
                     self.rightshift(rotation, num_witness);
@@ -395,9 +395,8 @@ macro_rules! impl_uint {
                     ],
                     outputs: vec![BrilligOutputs::Simple(new_witness)],
                     foreign_call_results: vec![],
-                    bytecode: vec![brillig::Opcode::BinaryIntOp {
-                        op: brillig::BinaryIntOp::Mul,
-                        bit_size: 127,
+                    bytecode: vec![brillig::Opcode::BinaryFieldOp {
+                        op: brillig::BinaryFieldOp::Mul,
                         lhs: RegisterIndex::from(0),
                         rhs: RegisterIndex::from(1),
                         destination: RegisterIndex::from(0),
@@ -450,7 +449,7 @@ macro_rules! impl_uint {
                     foreign_call_results: vec![],
                     bytecode: vec![brillig::Opcode::BinaryIntOp {
                         op: brillig::BinaryIntOp::And,
-                        bit_size: 32,
+                        bit_size: self.width,
                         lhs: RegisterIndex::from(0),
                         rhs: RegisterIndex::from(1),
                         destination: RegisterIndex::from(0),
@@ -493,7 +492,7 @@ macro_rules! impl_uint {
                     foreign_call_results: vec![],
                     bytecode: vec![brillig::Opcode::BinaryIntOp {
                         op: brillig::BinaryIntOp::Xor,
-                        bit_size: 32,
+                        bit_size: self.width,
                         lhs: RegisterIndex::from(0),
                         rhs: RegisterIndex::from(1),
                         destination: RegisterIndex::from(0),
@@ -537,7 +536,7 @@ macro_rules! impl_uint {
                     foreign_call_results: vec![],
                     bytecode: vec![brillig::Opcode::BinaryIntOp {
                         op: brillig::BinaryIntOp::Sub,
-                        bit_size: 32,
+                        bit_size: self.width,
                         lhs: RegisterIndex::from(1),
                         rhs: RegisterIndex::from(0),
                         destination: RegisterIndex::from(0),

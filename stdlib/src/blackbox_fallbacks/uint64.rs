@@ -1,6 +1,6 @@
 use crate::impl_uint;
 
-impl_uint!(UInt64, 32);
+impl_uint!(UInt64, 64);
 impl UInt64 {
     /// Load a [UInt64] from four [Witness]es each representing a [u8]
     pub(crate) fn from_witnesses(
@@ -66,98 +66,98 @@ impl UInt64 {
                 bytecode: vec![
                     brillig::Opcode::BinaryIntOp {
                         op: brillig::BinaryIntOp::Shl,
-                        bit_size: 32,
+                        bit_size: 64,
                         lhs: RegisterIndex::from(0),
                         rhs: RegisterIndex::from(8),
                         destination: RegisterIndex::from(0),
                     },
                     brillig::Opcode::BinaryIntOp {
                         op: brillig::BinaryIntOp::Add,
-                        bit_size: 32,
+                        bit_size: 64,
                         lhs: RegisterIndex::from(0),
                         rhs: RegisterIndex::from(1),
                         destination: RegisterIndex::from(0),
                     },
                     brillig::Opcode::BinaryIntOp {
                         op: brillig::BinaryIntOp::Shl,
-                        bit_size: 32,
+                        bit_size: 64,
                         lhs: RegisterIndex::from(0),
                         rhs: RegisterIndex::from(8),
                         destination: RegisterIndex::from(0),
                     },
                     brillig::Opcode::BinaryIntOp {
                         op: brillig::BinaryIntOp::Add,
-                        bit_size: 32,
+                        bit_size: 64,
                         lhs: RegisterIndex::from(0),
                         rhs: RegisterIndex::from(2),
                         destination: RegisterIndex::from(0),
                     },
                     brillig::Opcode::BinaryIntOp {
                         op: brillig::BinaryIntOp::Shl,
-                        bit_size: 32,
+                        bit_size: 64,
                         lhs: RegisterIndex::from(0),
                         rhs: RegisterIndex::from(8),
                         destination: RegisterIndex::from(0),
                     },
                     brillig::Opcode::BinaryIntOp {
                         op: brillig::BinaryIntOp::Add,
-                        bit_size: 32,
+                        bit_size: 64,
                         lhs: RegisterIndex::from(0),
                         rhs: RegisterIndex::from(3),
                         destination: RegisterIndex::from(0),
                     },
                     brillig::Opcode::BinaryIntOp {
                         op: brillig::BinaryIntOp::Shl,
-                        bit_size: 32,
+                        bit_size: 64,
                         lhs: RegisterIndex::from(0),
                         rhs: RegisterIndex::from(8),
                         destination: RegisterIndex::from(0),
                     },
                     brillig::Opcode::BinaryIntOp {
                         op: brillig::BinaryIntOp::Add,
-                        bit_size: 32,
+                        bit_size: 64,
                         lhs: RegisterIndex::from(0),
                         rhs: RegisterIndex::from(4),
                         destination: RegisterIndex::from(0),
                     },
                     brillig::Opcode::BinaryIntOp {
                         op: brillig::BinaryIntOp::Shl,
-                        bit_size: 32,
+                        bit_size: 64,
                         lhs: RegisterIndex::from(0),
                         rhs: RegisterIndex::from(8),
                         destination: RegisterIndex::from(0),
                     },
                     brillig::Opcode::BinaryIntOp {
                         op: brillig::BinaryIntOp::Add,
-                        bit_size: 32,
+                        bit_size: 64,
                         lhs: RegisterIndex::from(0),
                         rhs: RegisterIndex::from(5),
                         destination: RegisterIndex::from(0),
                     },
                     brillig::Opcode::BinaryIntOp {
                         op: brillig::BinaryIntOp::Shl,
-                        bit_size: 32,
+                        bit_size: 64,
                         lhs: RegisterIndex::from(0),
                         rhs: RegisterIndex::from(8),
                         destination: RegisterIndex::from(0),
                     },
                     brillig::Opcode::BinaryIntOp {
                         op: brillig::BinaryIntOp::Add,
-                        bit_size: 32,
+                        bit_size: 64,
                         lhs: RegisterIndex::from(0),
                         rhs: RegisterIndex::from(6),
                         destination: RegisterIndex::from(0),
                     },
                     brillig::Opcode::BinaryIntOp {
                         op: brillig::BinaryIntOp::Shl,
-                        bit_size: 32,
+                        bit_size: 64,
                         lhs: RegisterIndex::from(0),
                         rhs: RegisterIndex::from(8),
                         destination: RegisterIndex::from(0),
                     },
                     brillig::Opcode::BinaryIntOp {
                         op: brillig::BinaryIntOp::Add,
-                        bit_size: 32,
+                        bit_size: 64,
                         lhs: RegisterIndex::from(0),
                         rhs: RegisterIndex::from(7),
                         destination: RegisterIndex::from(0),
@@ -169,8 +169,8 @@ impl UInt64 {
             new_gates.push(brillig_opcode);
             let mut expr = Expression::from(new_witness);
             for j in 0..8 {
-                let scaling_factor_value = 1 << (8 * (7 - j) as u32);
-                let scaling_factor = FieldElement::from(scaling_factor_value as u128);
+                let scaling_factor_value: u128 = 1 << (8 * (7 - j) as u32);
+                let scaling_factor = FieldElement::from(scaling_factor_value);
                 expr.push_addition_term(-scaling_factor, witnesses[i * 8 + j]);
             }
 

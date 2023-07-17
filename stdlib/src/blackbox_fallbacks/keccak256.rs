@@ -39,8 +39,8 @@ const ROUND_CONSTANTS: [u128; 24] = [
     0x80000001,
     0x8000000080008008,
 ];
-const ROTR: [u32; 25] =
-    [0, 1, 62, 28, 27, 36, 44, 6, 55, 20, 3, 10, 43, 25, 39, 41, 45, 15, 21, 8, 18, 2, 61, 56, 14];
+const RHO: [u32; 24] =
+    [1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 2, 14, 27, 41, 56, 8, 25, 43, 62, 18, 39, 61, 20, 44];
 const PI: [usize; 24] =
     [10, 7, 11, 17, 18, 3, 5, 16, 8, 21, 24, 4, 15, 23, 19, 13, 12, 2, 20, 14, 22, 9, 6, 1];
 
@@ -106,13 +106,19 @@ fn create_keccak_constraint(
         state = new_state;
     }
 
-    (vec![], num_witness, new_gates)
+    let result: Vec<Witness> = state[..32].into_iter().map(|x| x.inner).collect();
+    (result, num_witness, new_gates)
 }
 
 fn keccakf(state: Vec<UInt8>, num_witness: u32) -> (Vec<UInt8>, Vec<Opcode>, u32) {
     let mut new_gates = Vec::new();
 
-    let state_witnesses: Vec<Witness> = state.into_iter().map(|x| x.inner).collect();
+    let mut state_witnesses: Vec<Witness> = Vec::new();
+    for i in 0..state.len() / 8 {
+        for j in 0..8 {
+            state_witnesses.push(state[i * 8 + (7 - j)].inner);
+        }
+    }
     let (mut state_u64, extra_gates, mut num_witness) =
         UInt64::from_witnesses(&state_witnesses, num_witness);
     new_gates.extend(extra_gates);
@@ -128,93 +134,90 @@ fn keccakf(state: Vec<UInt8>, num_witness: u32) -> (Vec<UInt8>, Vec<Opcode>, u32
     let state_u64_witnesses: Vec<Witness> = state_u64.into_iter().map(|x| x.inner).collect();
     let mut state_u8 = Vec::new();
     for state_u64_witness in state_u64_witnesses {
-        let (extra_gates, u8s, updated_witness_counter) =
+        let (extra_gates, mut u8s, updated_witness_counter) =
             byte_decomposition(Expression::from(state_u64_witness), 8, num_witness);
         new_gates.extend(extra_gates);
+        u8s.reverse();
         state_u8.push(u8s);
         num_witness = updated_witness_counter;
     }
 
-    let state_u8 = state_u8.into_iter().flatten().map(UInt8::new).collect();
+    let state_u8: Vec<UInt8> = state_u8.into_iter().flatten().map(UInt8::new).collect();
     (state_u8, new_gates, num_witness)
 }
 
 fn keccak_round(
-    mut state_u64: Vec<UInt64>,
+    mut a: Vec<UInt64>,
     round_const: u128,
     mut num_witness: u32,
 ) -> (Vec<UInt64>, Vec<Opcode>, u32) {
     let mut new_gates = Vec::new();
 
     // theta
-    let mut array_c = Vec::new();
-    for x in 0..5 {
-        let (a, extra_gates, updated_witness_counter) =
-            state_u64[x + 3 * 5].xor(&state_u64[x + 4 * 5], num_witness);
+    let mut array = Vec::new();
+    for _ in 0..5 {
+        let (zero, extra_gates, updated_witness_counter) = UInt64::load_constant(0, num_witness);
+        array.push(zero);
         new_gates.extend(extra_gates);
-        let (b, extra_gates, updated_witness_counter) =
-            state_u64[x + 2 * 5].xor(&a, updated_witness_counter);
-        new_gates.extend(extra_gates);
-        let (c, extra_gates, updated_witness_counter) =
-            state_u64[x + 5].xor(&b, updated_witness_counter);
-        new_gates.extend(extra_gates);
-        let (d, extra_gates, updated_witness_counter) =
-            state_u64[x].xor(&c, updated_witness_counter);
-        new_gates.extend(extra_gates);
-        array_c.push(d);
-        num_witness = updated_witness_counter;
-    }
-    let mut array_d = Vec::new();
-    for x in 0..5 {
-        let (a, extra_gates, updated_witness_counter) = array_c[(x + 1) % 5].rol(1, num_witness);
-        new_gates.extend(extra_gates);
-        let (b, extra_gates, updated_witness_counter) =
-            array_c[(x + 4) % 5].xor(&a, updated_witness_counter);
-        new_gates.extend(extra_gates);
-        array_d.push(b);
         num_witness = updated_witness_counter;
     }
     for x in 0..5 {
-        for y in 0..5 {
-            let (a, extra_gates, updated_witness_counter) =
-                state_u64[x + y * 5].xor(&array_d[x], num_witness);
+        for y_count in 0..5 {
+            let y = y_count * 5;
+            let (new_array_ele, extra_gates, updated_witness_counter) =
+                array[x].xor(&a[x + y], num_witness);
             new_gates.extend(extra_gates);
             num_witness = updated_witness_counter;
-            state_u64[x + y * 5] = a;
+            array[x] = new_array_ele;
+        }
+    }
+    for x in 0..5 {
+        for y_count in 0..5 {
+            let y = y_count * 5;
+            let (a_ele, extra_gates, updated_witness_counter) =
+                array[(x + 1) % 5].rol(1, num_witness);
+            new_gates.extend(extra_gates);
+            let (b_ele, extra_gates, updated_witness_counter) =
+                array[(x + 4) % 5].xor(&a_ele, updated_witness_counter);
+            new_gates.extend(extra_gates);
+            let (new_array_ele, extra_gates, updated_witness_counter) =
+                a[x + y].xor(&b_ele, updated_witness_counter);
+            new_gates.extend(extra_gates);
+            num_witness = updated_witness_counter;
+            a[x + y] = new_array_ele;
         }
     }
 
     // rho and pi
-    let mut last = state_u64[1];
+    let mut last = a[1];
     for x in 0..24 {
-        let temp = state_u64[PI[x]];
-        let (a, extra_gates, updated_witness_counter) = last.rol(ROTR[x], num_witness);
+        array[0] = a[PI[x]];
+        let (a_ele, extra_gates, updated_witness_counter) = last.rol(RHO[x], num_witness);
         new_gates.extend(extra_gates);
-        state_u64[PI[x]] = a;
+        a[PI[x]] = a_ele;
         num_witness = updated_witness_counter;
-        last = temp;
+        last = array[0];
     }
 
     // chi
-    let mut array_b = Vec::new();
     for y_step in 0..5 {
         let y = y_step * 5;
 
         for x in 0..5 {
-            array_b.push(state_u64[y + x]);
+            array[x] = a[y + x];
         }
 
         for x in 0..5 {
-            let (a, extra_gates, updated_witness_counter) = array_b[(x + 1) % 5].not(num_witness);
+            let (a_ele, extra_gates, updated_witness_counter) = array[(x + 1) % 5].not(num_witness);
             new_gates.extend(extra_gates);
-            let (b, extra_gates, updated_witness_counter) =
-                a.and(&array_b[(x + 2) % 5], updated_witness_counter);
+            let (b_ele, extra_gates, updated_witness_counter) =
+                a_ele.and(&array[(x + 2) % 5], updated_witness_counter);
             new_gates.extend(extra_gates);
-            let (c, extra_gates, updated_witness_counter) =
-                array_b[x].xor(&b, updated_witness_counter);
+            let (c_ele, extra_gates, updated_witness_counter) =
+                array[x].xor(&b_ele, updated_witness_counter);
             new_gates.extend(extra_gates);
 
-            state_u64[y + x] = c;
+            a[y + x] = c_ele;
             num_witness = updated_witness_counter;
         }
     }
@@ -222,11 +225,11 @@ fn keccak_round(
     // iota
     let (rc, extra_gates, num_witness) = UInt64::load_constant(round_const, num_witness);
     new_gates.extend(extra_gates);
-    let (a, extra_gates, num_witness) = state_u64[0].xor(&rc, num_witness);
+    let (a_ele, extra_gates, num_witness) = a[0].xor(&rc, num_witness);
     new_gates.extend(extra_gates);
-    state_u64[0] = a;
+    a[0] = a_ele;
 
-    (state_u64, new_gates, num_witness)
+    (a, new_gates, num_witness)
 }
 
 fn pad_keccak(
@@ -241,7 +244,7 @@ fn pad_keccak(
     new_gates.extend(extra_gates);
     input.push(pad_witness);
 
-    for _ in 0..total_len {
+    for _ in 0..total_len - input.len() {
         let (updated_witness_counter, pad_witness, extra_gates) = pad(0x00, 8, num_witness);
         new_gates.extend(extra_gates);
         input.push(pad_witness);
@@ -253,8 +256,9 @@ fn pad_keccak(
 
     let (final_pad, extra_gates, num_witness) =
         UInt8::new(input[total_len - 1]).xor(&zero_x_80, num_witness);
+    new_gates.extend(extra_gates);
 
     input[total_len - 1] = final_pad.inner;
 
-    (input, extra_gates, num_witness)
+    (input, new_gates, num_witness)
 }
